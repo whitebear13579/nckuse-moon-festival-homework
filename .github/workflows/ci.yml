@@ -105,7 +105,7 @@ jobs:
           test -n "$VERCEL_TOKEN"
           test -n "$VERCEL_ORG_ID"
           test -n "$VERCEL_PROJECT_ID"
-          test "$SUPABASE_PROJECT_ID" != '${{ vars.SUPABASE_PROJECT_ID_STAGING }}'
+          test "$SUPABASE_PROJECT_ID"
       - name: Migrate production database
         run: |
           npx supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
