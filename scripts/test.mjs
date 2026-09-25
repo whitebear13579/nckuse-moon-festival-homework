@@ -57,7 +57,7 @@ try {
   await run([supabaseCli, '--workdir', tmp, 'start'], process.env, 300_000)
   stackStarted = true
   const statusOutput = await run([supabaseCli, '--workdir', tmp, 'status', '-o', 'json'])
-  const status = JSON.parse(statusOutput.slice(statusOutput.indexOf('{')))
+  const status = JSON.parse(statusOutput.slice(statusOutput.indexOf('{'), statusOutput.lastIndexOf('}') + 1))
   const env = {
     ...process.env,
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
