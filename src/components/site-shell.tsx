@@ -131,7 +131,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               {children}
             </motion.main>
           </AnimatePresence>
-          <footer className="site-footer"><span>中秋夜，點一盞燈。</span><span>月兔點燈 · Pixel Moon Festival</span></footer>
+          <footer className="site-footer"><span>月兔點燈 · 2026</span><span>由 whitebear13579 強力驅動</span></footer>
         </div>
       </MotionConfig>
     </SessionContext.Provider>
