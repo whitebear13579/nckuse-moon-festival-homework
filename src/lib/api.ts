@@ -32,7 +32,9 @@ const STATUSES: Record<string, number> = {
 
 export function rpcError(error: { message: string; code?: string } | null) {
   const code = error?.message?.trim() ?? 'service_unavailable'
-  if (!(code in STATUSES)) console.error('Supabase RPC failed', { code: error?.code ?? 'unknown' })
+  if (error?.code === 'PGRST202' || error?.code === 'PGRST205') {
+    console.error('Supabase schema is missing or stale; check migrations and PostgREST schema cache.', { code: error.code })
+  } else if (!(code in STATUSES)) console.error('Supabase RPC failed', { code: error?.code ?? 'unknown' })
   return apiError(code in STATUSES ? code : 'service_unavailable', STATUSES[code] ?? 503)
 }
 
