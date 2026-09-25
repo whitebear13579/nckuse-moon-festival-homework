@@ -1,0 +1,107 @@
+import { expect, test } from '@playwright/test'
+import { createPlayer } from './helpers'
+
+test('登入後完成第 1 關、進榜、改暱稱且保留成績', async ({ page, context }) => {
+  await createPlayer(context)
+  await page.goto('/game')
+  await expect(page.getByRole('heading', { name: /讓每一盞燈/ })).toBeVisible()
+  await page.getByRole('button', { name: /開始第 1 關/ }).click()
+  await expect(page.getByRole('button', { name: /第 1 列第 1 行/ })).toBeEnabled()
+  await page.getByRole('button', { name: /第 1 列第 1 行/ }).click()
+  await page.getByRole('button', { name: /第 2 列第 2 行/ }).click()
+  await expect(page.getByText('這一關，亮起來了。')).toBeVisible()
+  await page.goto('/account')
+  await expect(page.getByText('個人最佳')).toBeVisible()
+  const oldScore = await page.locator('.record-list strong').first().textContent()
+  const newName = `月夜${crypto.randomUUID().slice(0, 8)}`
+  await page.getByRole('textbox', { name: '暱稱' }).fill(newName)
+  await page.getByRole('button', { name: '儲存暱稱' }).click()
+  await expect(page.getByText(/暱稱已更新/)).toBeVisible()
+  await page.goto('/leaderboard')
+  await expect(page.getByText(newName)).toBeVisible()
+  await page.goto('/account')
+  expect(await page.locator('.record-list strong').first().textContent()).toBe(oldScore)
+})
+
+test('偏好雲端儲存後在另一裝置讀回，舊 revision 不能覆寫', async ({ browser }) => {
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const { email } = await createPlayer(contextA)
+  // Second login uses the same local test account and cookie-based SSR client.
+  await createPlayer(contextB, email)
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+  await pageA.goto('/account')
+  await pageB.goto('/account')
+  const toggleA = pageA.getByRole('checkbox', { name: /減少動畫/ })
+  const toggleB = pageB.getByRole('checkbox', { name: /減少動畫/ })
+  await expect(toggleA).toBeEnabled()
+  await expect(toggleB).toBeEnabled()
+  await toggleA.click()
+  await expect(toggleA).toBeChecked()
+  await expect(pageA.getByText('偏好已同步到雲端。')).toBeVisible()
+  await pageB.bringToFront()
+  await pageB.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(toggleB).toBeChecked()
+  await pageB.reload()
+  await expect(toggleB).toBeChecked()
+  await contextA.close()
+  await contextB.close()
+})
+
+test('三關依序解鎖、終幕與跨關重玩保留最佳', async ({ page, context }) => {
+  await createPlayer(context)
+  await page.goto('/game')
+  await page.getByRole('button', { name: /開始第 1 關/ }).click()
+  for (const [stage, size, moves] of [[1, 3, [0, 4]], [2, 4, [0, 3, 5, 10]], [3, 5, [0, 4, 6, 12, 18, 24]]] as const) {
+    if (stage === 3) await page.setViewportSize({ width: 320, height: 740 })
+    if (stage > 1) await expect(page.locator(`.lantern-board[aria-label="第 ${stage} 關燈陣"]`)).toBeVisible()
+    if (stage === 3) {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      const cell = page.locator('.lantern-cell').first()
+      const box = await cell.boundingBox()
+      expect(box?.width).toBeGreaterThanOrEqual(48)
+      expect(box?.height).toBeGreaterThanOrEqual(48)
+      expect(await page.locator('.lantern-board').evaluate(board => parseFloat(getComputedStyle(board).columnGap))).toBeGreaterThanOrEqual(8)
+    }
+    for (const index of moves) {
+      const row = Math.floor(index / size) + 1
+      const col = index % size + 1
+      await page.getByRole('button', { name: new RegExp(`第 ${row} 列第 ${col} 行`) }).click()
+    }
+    await expect(page.getByRole('heading', { name: stage === 3 ? '滿月，亮起來了。' : '這一關，亮起來了。' })).toBeVisible()
+    if (stage < 3) await page.getByRole('button', { name: '挑戰下一關 →' }).click()
+  }
+  const bests = await context.request.get('/api/me').then(response => response.json())
+  expect(bests.unlockedStage).toBe(3)
+  expect(bests.bests).toHaveLength(3)
+  await page.getByRole('button', { name: /第 1 關.*初月/ }).click()
+  await expect(page.getByRole('button', { name: /第 1 列第 1 行/ })).toBeEnabled()
+  await page.getByRole('button', { name: '重來本關' }).click()
+  const afterRestart = await context.request.get('/api/me').then(response => response.json())
+  expect(afterRestart.attempt.status).toBe('active')
+  expect(afterRestart.attempt.stage).toBe(1)
+  expect(afterRestart.bests).toHaveLength(3)
+})
+
+test('持續在前景的第二裝置於 30 秒輪詢取得偏好', async ({ browser }) => {
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const { email } = await createPlayer(contextA)
+  await createPlayer(contextB, email)
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+  await pageB.clock.install()
+  await pageB.goto('/account')
+  await pageA.goto('/account')
+  const toggleA = pageA.getByRole('checkbox', { name: /減少動畫/ })
+  const toggleB = pageB.getByRole('checkbox', { name: /減少動畫/ })
+  await expect(toggleA).toBeEnabled()
+  await expect(toggleB).not.toBeChecked()
+  await toggleA.click()
+  await expect(pageA.getByText('偏好已同步到雲端。')).toBeVisible()
+  await pageB.clock.runFor(30_000)
+  await expect(toggleB).toBeChecked()
+  await contextA.close()
+  await contextB.close()
+})

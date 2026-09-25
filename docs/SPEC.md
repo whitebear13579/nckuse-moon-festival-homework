@@ -1,8 +1,8 @@
 # 月兔點燈｜產品與工程規格
 
-> 狀態：**待使用者確認；尚未實作**  
-> 更新：2026-09-24  
-> 範圍：本文件為第一版交付依據。確認後才進入實作、測試與審計。
+> 狀態：**已確認；本機實作與自動化測試完成，託管環境待設定與驗收**
+> 更新：2026-09-25
+> 範圍：本文件為第一版交付與驗收依據；本機實作、測試與工程審計已完成。
 
 ## 1. 要做什麼
 
@@ -237,24 +237,23 @@ Motion for React 管理頁面與元件動畫，登入且雲端偏好為 `true` �
 
 ## 8. 測試計畫
 
-**單一指令 `npm test`**：測試腳本在獨立的暫存目錄複製 Supabase migration，以獨立 project id／ports 啟動**測試專用**本機 Supabase（Docker）、重建該測試資料庫並注入本機測試環境；先跑 `supabase test db`，再啟動一個指向測試資料庫的本機 Next 伺服器，讓 `vitest run` 的 API 整合測試透過 HTTP 呼叫真正 Route Handlers，最後 `playwright test` 重用該伺服器。結束時清理伺服器與測試 stack。一般開發用的本機資料庫不被 reset。首次需 `npx playwright install chromium`；CI 用 `npx playwright install --with-deps chromium`。腳本拒絕 linked／remote 目標，並將測試資料與任何 staging／production 金鑰隔離。
+**單一指令 `npm test`**：測試腳本在獨立的暫存目錄複製 Supabase migration，以獨立 project id／ports 啟動**測試專用**本機 Supabase（Docker）、重建該測試資料庫並注入本機測試環境；先跑 `supabase test db` 與 `vitest run`，再建置並啟動指向測試資料庫的 Next 伺服器，讓 `playwright test` 透過 HTTP 驗證真正的 Route Handlers 與頁面。結束時清理伺服器與測試 stack。一般開發用的本機資料庫不被 reset。首次需 `npx playwright install chromium`；CI 用 `npx playwright install --with-deps chromium`。腳本拒絕 linked／remote 目標，並將測試資料與任何 staging／production 金鑰隔離。
 
 | 檔案／案例 | 主要風險 | AC |
 | --- | --- | --- |
-| `src/tests/game.test.ts`：T-U01～04 | 格點與邊角、固定題目可解性、計時格式與背景恢復、999 步及 30 分鐘邊界；時間注入 fake clock。 | 04、05、11、12 |
-| `src/tests/cloud-preferences.test.ts`：T-U05 | 系統／雲端偏好的有效值、載入中安全狀態、非布林值拒絕、同步間隔 fake timers；以拋錯的瀏覽器儲存 mock 驗證站點不碰本機儲存。 | 16、17 |
-| `src/tests/nickname.test.ts`：T-U06 | 去空白／NFC、2／12 字元邊界與超限、允許碼點、至少一字母或漢字、保留名稱、大小寫等價；規則與 DB 一致。 | 26、27 |
-| `supabase/tests/database/*.sql`：T-DB01～09 | RLS／grant、TS/SQL 盤面一致樣例、原子點擊、idempotency、跨帳號、完成與最佳 upsert、榜單排序、時限、跨關唯一 active、輸入拒絕；T-DB09 另驗預設暱稱唯一、本人改名、冷卻、並發重名、改名不改成績與榜單關聯；pgTAP 每例 rollback。 | 03～10、12、13、15、25～27 |
-| `supabase/tests/database/preferences.sql`：T-DB10 | 預設值、本人讀寫、匿名／跨帳號拒絕、revision 衝突與同值無操作；改偏好不改成績。 | 16、17、28 |
-| `src/tests/api.test.ts`：T-I02～12 | 真實本機 Supabase + Route Handlers：登入／登出、進度、重送、跨關切換與榜單；各 API 的成功、401/403/409/422/503、逾時與畸形回應。 | 02、03、06～15、23、25 |
-| `src/tests/screens.test.tsx`：T-I01、T-I13～16 | 首頁／遊戲／榜單元件、登入回流、雲端偏好載入狀態、標籤、reduced motion 與過渡。 | 01、16～19、22 |
-| `src/tests/nickname-api.test.ts`：T-I17 | 真實 Route Handler + 本機 DB：成功、401、409、422、429、503、8 秒逾時後同步、畸形回應與表單錯誤回饋。 | 26、27 |
-| `src/tests/preferences-api.test.ts`：T-I18 | 真實 Route Handler + 本機 DB：GET／PATCH 成功、無 session、錯誤型別、Origin、版本衝突、503、8 秒逾時後重讀與畸形回應；UI 顯示未同步與重試。 | 16、17、28 |
-| `e2e/*.spec.ts`：T-E01～12 | Chromium 雙頁／帳號流程、後端續玩、計時背景恢復、跨關切換、榜單、斷網、鍵盤與觸控、動態、4 種寬度及 emfont 四態；T-E12 測帳號改名後的榜單及成績不變、重名提示。 | 01～03、06、08、10、11、13、18～23、25～27 |
-| `e2e/cloud-preferences.spec.ts`：T-E13 | 兩個 Chromium context 同帳號；A 設定、B 回前景或 fake clock 推進 30 秒後同步，重整仍在；測 API 失敗／衝突、訪客系統偏好與本機儲存不可用。 | 16、17、28 |
+| `src/tests/game.test.ts`：T-U01～04 | 中心／邊角切換、固定解法、顯示時間的伺服器基準與格式、非法格點。 | 04、05、11、15 |
+| `src/tests/cloud-preferences.test.ts`：T-U05 | 系統與雲端偏好組合、載入前降級、輸入型別及 revision 邊界。 | 16、17、19 |
+| `src/tests/nickname.test.ts`：T-U06 | 去空白、2／12 字元邊界、允許碼點及保留名稱。 | 26、27 |
+| `src/tests/client-api.test.ts`：T-I11 | 成功與錯誤回應、畸形 JSON、abort；逾時測試使用 fake timers 與可注入的 AbortSignal。 | 14、17、23、27 |
+| `supabase/tests/database/game.sql`、`boundaries.sql`、`bests.sql`：T-DB01～08 | table grant、固定盤面、逐步原子更新、重送、跨帳號、解鎖、30 分鐘與 999 步、開始頻率、重玩更快／更慢的最佳更新；每例 rollback。 | 03～09、12、13、15、25 |
+| `supabase/tests/database/ranking.sql`：T-DB05 | 52 名 fixture 驗證前 50、每關隔離、個人第 52 名、同時間步數／完成時間排序及改名後顯示；rollback 不改既有開發成績。 | 10、23、26 |
+| `supabase/tests/database/preferences.sql`：T-DB09～10 | 預設偏好、讀寫與 revision 衝突、同值無操作、暱稱格式／保留／重名／冷卻。 | 16、17、26～28 |
+| `e2e/api.spec.ts`：T-I02～12、T-I17～18 | 真實 Route Handlers + 本機 Auth/Postgres：401、403、409、422、429、Origin 與 Content-Type、點擊重送、登出後登入續玩、暱稱和雲端偏好。 | 02、03、06、07、12～16、25～27 |
+| `e2e/home.spec.ts`、`accessibility-motion.spec.ts`：T-E01～02、T-E07～11 | 首頁／登入／榜單、鍵盤、reduced motion、無本機儲存、API 503／畸形回應與重試、字體失敗／逾時、四種寬度。 | 01、02、14、17～23 |
+| `e2e/auth-game.spec.ts`：T-E03～06、T-E12～13 | 三關終幕、320px 的 5×5 操作、重玩保留成績、改名後榜單、同帳號兩裝置的焦點與 30 秒輪詢同步。 | 06、08、10、11、16、20、25、26、28 |
 | CI：T-CI01 | 冷安裝、migration replay、單一測試指令、lint、型別與 Next 伺服器建置。 | 24 |
 
-**確定性**：DB 邊界測試在 rollback 的測試交易中設置 attempt 的 `started_at` 與 profile 的 `nickname_updated_at` fixture，正式函式仍用資料庫 `clock_timestamp()`，不修改任何正式榜單。UI 用 fake timers／Playwright clock 測 30 秒偏好同步與計時，網路用 request routing 模擬延遲與錯誤。正式盤面固定，無 `Math.random()` 成績來源；只用密碼學亂數建立 UUID／預設暱稱。E2E 在本機 Auth 建兩個測試帳號（僅本機允許測試密碼登入）驗證跨帳號隔離；OAuth callback 的 app 行為以整合測試驗證，真實 Google 跳轉另作部署後 smoke check。每個測試對應一條 AC 或具體安全風險，不寫空泛 snapshot。
+**確定性**：DB 邊界測試在 rollback 交易中設置 `started_at` fixture；正式函式仍用資料庫 `clock_timestamp()`。API abort 用 fake timers；跨裝置 30 秒同步用 Playwright clock，錯誤用 request routing。正式盤面固定，無 `Math.random()` 成績來源；只用密碼學亂數建立 UUID／預設暱稱。E2E 在本機 Auth 建兩個測試帳號驗證跨帳號隔離。外部 Google OAuth、真實部署的 emfont 成功載入及 Vercel／Supabase migration 權限仍需部署後 smoke check；它們不在本機 CI 的可重現環境內。
 
 ## 9. 效能、無障礙與安全邊界
 
@@ -264,7 +263,7 @@ Motion for React 管理頁面與元件動畫，登入且雲端偏好為 `true` �
 - 網站不使用 `localStorage`／`sessionStorage`；正式資料與偏好由資料庫保存。Supabase session 使用 cookie；XSS 防護仍須靠輸出跳脫與限制外部腳本，不能把 cookie 誤稱為完全不可被攻擊。Route Handlers 每次驗證 claims、Origin 與內容型別；資料庫 RLS、函式 grant、帳號 ownership 再做第二道檢查。公開榜單只曝露使用者自選的公開暱稱與成績，不回傳 email、Google 姓名或私人偏好。Vercel 環境變數僅有 publishable key，**不需 service-role key**。
 - 此模型防止修改本機儲存或直接提交虛構完成時間；不保證防止腳本自動操作、多人共用帳號或網路延遲造成的時間差。若將來有獎品，必須另做防機器人、風控與規則審計。
 
-## 10. 專案目錄（規劃）
+## 10. 專案目錄（實作）
 
 ```text
 app/
@@ -288,9 +287,11 @@ proxy.ts                       # Next.js 16 session 更新
 src/
   components/
     font-loader.tsx
-    route-transition.tsx
+    site-shell.tsx
+    pixel-scene.tsx
     home-screen.tsx
-    pixel-swap.tsx
+    pixel-swap-source.tsx
+    login-screen.tsx
     game-screen.tsx
     leaderboard-screen.tsx
     account-screen.tsx
@@ -301,26 +302,26 @@ src/
     nickname.ts                # 正規化與前端表單檢查；DB 再驗證
     supabase/client.ts
     supabase/server.ts
-    api-validation.ts
+    api.ts
+    client-api.ts
   tests/
     game.test.ts
     cloud-preferences.test.ts
     nickname.test.ts
-    api.test.ts
-    nickname-api.test.ts
-    preferences-api.test.ts
-    screens.test.tsx
+    client-api.test.ts
 e2e/
   home.spec.ts
   auth-game.spec.ts
-  leaderboard.spec.ts
+  api.spec.ts
   accessibility-motion.spec.ts
-  cloud-preferences.spec.ts
 supabase/
   config.toml
   migrations/
   tests/database/
-scripts/test.mjs
+scripts/
+  test.mjs
+  smoke-db.mjs
+  capture.mjs
 docs/
   SPEC.md
   THIRD_PARTY_NOTICES.md
@@ -385,19 +386,19 @@ package-lock.json
 | 風險 | 處理 |
 | --- | --- |
 | 網路延遲進入正式計時，地區間成績有差 | 明示為休閒榜；伺服器計時一致且可審計，不接受客戶端校正值。 |
-| 自動解題或多人共用帳號 | 伺服器逐步驗證、限流與異常監測；不承諾完全防機器人。 |
+| 自動解題或多人共用帳號 | 伺服器逐步驗證與限流；不承諾完全防機器人，異常監測留待託管環境加上。 |
 | 自選暱稱冒充他人、含個資或不當文字 | 保留管理身分名稱、限制字元與長度、公開前提示勿用真名／聯絡資訊；全站唯一不等於真實身分驗證。本版不承諾自動判斷所有冒充或不當語意，收到檢舉時由站方依帳號處理。 |
 | Supabase SSR 套件仍為 beta | 鎖版本，Context7／官方文件核對升級；Auth、cookie 更新與 Route Handler 回歸測試。 |
 | OAuth／Vercel 預覽 redirect 設錯 | staging 與 production 分環境，設固定 Origin、allow list，部署 smoke check。 |
 | 資料庫函式 `SECURITY DEFINER` 錯誤繞過 RLS | 固定 search_path、最小 grant、完整 schema 限定與跨帳號 pgTAP 測試。 |
 | API 結果不明時重送導致兩次點格 | 相同 requestId 收據、revision、單一 in-flight 操作，逾時先同步。 |
-| emfont 慢或失效 | 非阻斷載入、1.5 秒內維持系統字體；CI 攔截字體四態，部署後實測。 |
+| emfont 慢或失效 | 非阻斷載入、1.5 秒後維持系統字體；CI 模擬失敗與逾時，部署後實測正常載入。 |
 | 服務中斷或使用者清除 cookie | 可重登取回資料庫進度；中斷時不接受離線正式操作。 |
 | 雲端偏好請求延遲或兩裝置同時修改 | 載入前不播放位移、失敗顯示未同步；前景 30 秒同步與 revision 衝突提示，避免默默覆寫。離線時無跨裝置即時同步。 |
 | 題目版本調整影響榜單可比性 | 固定 version 1；改題只新增版本並分榜，不覆蓋歷史紀錄。 |
 | 嘗試與 requestId 收據持續增長 | 先用複合索引與每帳號建立頻率限制；觀察資料量及查詢 p95，必要時以 migration 加入歷史非最佳嘗試與收據的保留期，最佳嘗試及榜單參照不可誤刪。 |
 
-目前沒有需要使用者補充才能完成規格的產品決策；**待確認的是本文件本身**。確認前不開始 M1。
+規格已獲使用者確認並據此實作。託管 Supabase、Google OAuth、Vercel 及 GitHub Actions 憑證由專案擁有者設定後，依第 11 節執行部署 smoke check。
 
 ## 15. 文件核對紀錄
 

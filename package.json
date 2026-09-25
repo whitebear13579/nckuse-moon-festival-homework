@@ -1,0 +1,54 @@
+{
+  "name": "moon-festival-homework",
+  "version": "1.0.0",
+  "description": "中秋像素解謎與伺服器計時排行榜",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "test:unit": "vitest run",
+    "test:db": "supabase test db",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whitebear13579/nckuse-moon-festival-homework.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/whitebear13579/nckuse-moon-festival-homework/issues"
+  },
+  "homepage": "https://github.com/whitebear13579/nckuse-moon-festival-homework#readme",
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
+    "motion": "^13.4.2",
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "jsdom": "^29.1.1",
+    "supabase": "^2.117.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  }
+}
